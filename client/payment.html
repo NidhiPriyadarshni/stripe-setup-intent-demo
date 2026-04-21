@@ -3,17 +3,24 @@
 <head>
   <script src="https://js.stripe.com/v3/"></script>
 </head>
+
 <body>
 
-<h2>Choose Payment Method</h2>
+<h2>Payment Page</h2>
 
-<button>Pay with APay</button>
-<button>Pay with PayPal</button>
-<button onclick="initStripePayment()">Pay with Stripe</button>
+<!-- 🔥 MODE SWITCH -->
+<select id="mode">
+  <option value="setup">SetupIntent (Save Card)</option>
+  <option value="payment">PaymentIntent (Pay Now)</option>
+</select>
 
-<div id="payment-element" style="margin-top: 20px;"></div>
+<br><br>
 
-<button id="payBtn">Confirm Payment</button>
+<button onclick="initStripePayment()">Initialize Stripe</button>
+
+<div id="payment-element" style="margin-top:20px;"></div>
+
+<button id="payBtn">Confirm</button>
 
 <script src="script.js"></script>
 

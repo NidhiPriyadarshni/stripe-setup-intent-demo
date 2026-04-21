@@ -25,97 +25,154 @@ function send() {
   inputEl.value = "";
 }
 
-// 🔹 CREATE SESSION BEFORE NAVIGATION
+// 🔹 CREATE SESSION (SETUP INTENT FLOW ONLY)
 async function goToPayment() {
-  console.log("Creating payment session...");
+  console.log("Creating setup session...");
 
   const userId = localStorage.getItem("userId");
 
-  // Step 1: Get/Create customer
-  const cRes = await fetch("https://stripe-setup-intent-demo.onrender.com/get-or-create-customer", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId }),
-  });
+  const cRes = await fetch(
+    "https://stripe-setup-intent-demo.onrender.com/get-or-create-customer",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    }
+  );
+
   const { customerId } = await cRes.json();
 
-  // Step 2: Create session
-  const sRes = await fetch("https://stripe-setup-intent-demo.onrender.com/create-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ customerId }),
-  });
+  const sRes = await fetch(
+    "https://stripe-setup-intent-demo.onrender.com/create-session",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customerId }),
+    }
+  );
+
   const { paymentSession } = await sRes.json();
 
-  // Store for next page
   localStorage.setItem("paymentSessionId", paymentSession.id);
   localStorage.setItem("clientSecret", paymentSession.clientSecret);
 
-  console.log("Session created:", paymentSession);
+  console.log("Setup session created:", paymentSession);
 
-  // Navigate AFTER session is ready
   window.location.href = "payment.html";
 }
 
-// 🔹 STRIPE FLOW
+// 🔹 STRIPE INITIALIZATION (DUAL MODE)
 
 let stripeInitialized = false;
 
 async function initStripePayment() {
-  console.log("Stripe button clicked");
+  console.log("Stripe init started");
 
   if (stripeInitialized) return;
   stripeInitialized = true;
 
-  const clientSecret = localStorage.getItem("clientSecret");
+  const mode = document.getElementById("mode").value;
 
-  if (!clientSecret) {
-    alert("Payment not initialized!");
-    return;
-  }
-
-  // 🔥 Fetch publishable key from backend
-  const res = await fetch("https://stripe-setup-intent-demo.onrender.com/config");
+  const res = await fetch(
+    "https://stripe-setup-intent-demo.onrender.com/config"
+  );
   const { publishableKey } = await res.json();
 
-  // 🔥 Initialize Stripe
   const stripe = Stripe(publishableKey);
 
-  const elements = stripe.elements({
-    clientSecret: clientSecret,
-  });
+  let elements;
 
-  const pe = elements.create("payment");
-  pe.mount("#payment-element");
+  // -------------------------
+  // 🔵 SETUP INTENT FLOW
+  // -------------------------
+  if (mode === "setup") {
+    const clientSecret = localStorage.getItem("clientSecret");
 
-  console.log("PaymentElement mounted");
+    if (!clientSecret) {
+      alert("SetupIntent not initialized");
+      return;
+    }
 
-  document.getElementById("payBtn").onclick = async () => {
-    console.log("Confirming setup...");
-
-    const { error } = await stripe.confirmSetup({
-      elements,
-      redirect: "if_required",
-      confirmParams: {
-        return_url: window.location.origin + "/result.html",
-      },
+    elements = stripe.elements({
+      clientSecret,
     });
 
-    if (error) {
-      console.error("Stripe error:", error);
-    }
-  };
+    const payment = elements.create("payment");
+    payment.mount("#payment-element");
+
+    document.getElementById("payBtn").onclick = async () => {
+      const { error } = await stripe.confirmSetup({
+        elements,
+        redirect: "if_required",
+        confirmParams: {
+          return_url: window.location.origin + "/result.html",
+        },
+      });
+
+      if (error) console.error("Setup error:", error);
+    };
+  }
+
+  // -------------------------
+  // 🟢 PAYMENT INTENT FLOW
+  // -------------------------
+  else {
+    const userId = localStorage.getItem("userId");
+
+    const cRes = await fetch(
+      "https://stripe-setup-intent-demo.onrender.com/get-or-create-customer",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      }
+    );
+
+    const { customerId } = await cRes.json();
+
+    const pRes = await fetch(
+      "https://stripe-setup-intent-demo.onrender.com/create-payment-intent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId }),
+      }
+    );
+
+    const { clientSecret } = await pRes.json();
+
+    elements = stripe.elements({
+      clientSecret,
+    });
+
+    const payment = elements.create("payment");
+    payment.mount("#payment-element");
+
+    document.getElementById("payBtn").onclick = async () => {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + "/result.html",
+        },
+      });
+
+      if (error) console.error("Payment error:", error);
+    };
+  }
 }
 
-// 🔹 CONFIRM BACKEND (optional use in result page)
+// 🔹 OPTIONAL BACKEND CONFIRM
 async function confirmBackend() {
   const psId = localStorage.getItem("paymentSessionId");
 
-  const res = await fetch("https://stripe-setup-intent-demo.onrender.com/confirm-session", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paymentSessionId: psId }),
-  });
+  const res = await fetch(
+    "https://stripe-setup-intent-demo.onrender.com/confirm-session",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentSessionId: psId }),
+    }
+  );
 
   const data = await res.json();
   console.log("Backend confirm response:", data);
