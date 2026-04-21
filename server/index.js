@@ -9,13 +9,29 @@ app.use(express.json());
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// In-memory DB
+// In-memory DB (demo only)
 const paymentSessions = {};
 
+// -----------------------------
 // 🔹 Logger
+// -----------------------------
 function log(step, message, data = null) {
   console.log(`\n[${step}] ${message}`);
   if (data) console.log("   →", JSON.stringify(data, null, 2));
+}
+
+// -----------------------------
+// ⚙️ CONFIG (FIX FOR 404)
+// -----------------------------
+app.get("/config", (req, res) => {
+  res.send({
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+  });
+});
+
+// Safety check (optional)
+if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+  console.warn("⚠️ Missing STRIPE_PUBLISHABLE_KEY in env");
 }
 
 // -----------------------------
@@ -34,9 +50,17 @@ app.post("/get-or-create-customer", async (req, res) => {
 
   if (search.data.length > 0) {
     customer = search.data[0];
+
+    log("CUSTOMER", "Existing customer found", {
+      customerId: customer.id,
+    });
   } else {
     customer = await stripe.customers.create({
       metadata: { userId },
+    });
+
+    log("CUSTOMER", "New customer created", {
+      customerId: customer.id,
     });
   }
 
@@ -49,6 +73,8 @@ app.post("/get-or-create-customer", async (req, res) => {
 app.post("/create-session", async (req, res) => {
   const { customerId } = req.body;
 
+  log("SETUP", "Creating SetupIntent", { customerId });
+
   const setupIntent = await stripe.setupIntents.create({
     customer: customerId,
   });
@@ -58,11 +84,16 @@ app.post("/create-session", async (req, res) => {
   paymentSessions[psId] = {
     id: psId,
     type: "setup",
+    status: "CREATED",
     clientSecret: setupIntent.client_secret,
     setupIntentId: setupIntent.id,
   };
 
-  res.send({ paymentSession: paymentSessions[psId] });
+  log("SETUP", "Session created", paymentSessions[psId]);
+
+  res.send({
+    paymentSession: paymentSessions[psId],
+  });
 });
 
 // -----------------------------
@@ -71,6 +102,8 @@ app.post("/create-session", async (req, res) => {
 app.post("/create-payment-intent", async (req, res) => {
   const { customerId } = req.body;
 
+  log("PAYMENT", "Creating PaymentIntent", { customerId });
+
   const paymentIntent = await stripe.paymentIntents.create({
     amount: 5000, // ₹50 test
     currency: "inr",
@@ -78,6 +111,10 @@ app.post("/create-payment-intent", async (req, res) => {
     automatic_payment_methods: {
       enabled: true,
     },
+  });
+
+  log("PAYMENT", "PaymentIntent created", {
+    id: paymentIntent.id,
   });
 
   res.send({
@@ -94,9 +131,24 @@ app.post("/confirm-session", async (req, res) => {
 
   const session = paymentSessions[paymentSessionId];
 
+  // safety check (IMPORTANT)
+  if (!session) {
+    return res.status(400).send({
+      error: "Invalid paymentSessionId",
+    });
+  }
+
+  log("CONFIRM", "Retrieving SetupIntent", {
+    setupIntentId: session.setupIntentId,
+  });
+
   const setupIntent = await stripe.setupIntents.retrieve(
     session.setupIntentId
   );
+
+  log("CONFIRM", "SetupIntent status", {
+    status: setupIntent.status,
+  });
 
   if (setupIntent.status === "succeeded") {
     session.status = "SUCCEEDED";
@@ -108,4 +160,9 @@ app.post("/confirm-session", async (req, res) => {
   res.send(session);
 });
 
-app.listen(4242, () => console.log("🚀 Server running on 4242"));
+// -----------------------------
+// 🚀 START SERVER
+// -----------------------------
+app.listen(4242, () => {
+  console.log("🚀 Server running on port 4242");
+});
