@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Result</title>
+</head>
+
+<body>
+
+  <!-- ✅ ADD THIS LINE HERE -->
+  <h2 id="msg">Loading...</h2>
+
+  <!-- ✅ YOUR SCRIPT BELOW -->
+  <script>
+  window.onload = async () => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("redirect_status");
+
+    const psId = localStorage.getItem("paymentSessionId");
+    const el = document.getElementById("msg");
+
+    if (!el) return;
+
+    if (status === "succeeded" && psId) {
+      const res = await fetch("http://localhost:4242/confirm-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ paymentSessionId: psId }),
+      });
+
+      const data = await res.json();
+
+      if (data.status === "SUCCEEDED" && data.paymentMethod) {
+        el.innerText = `PaymentSession succeeded!
+Stripe PaymentMethodId: ${data.paymentMethod}`;
+      } else {
+        el.innerText = "Payment failed. Try again.";
+      }
+    } else {
+      el.innerText = "Payment failed. Try again.";
+    }
+  };
+  </script>
+
+</body>
+</html>

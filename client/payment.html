@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+
+<h2>Choose Payment Method</h2>
+
+<button>Pay with APay</button>
+<button>Pay with PayPal</button>
+<button onclick="initStripePayment()">Pay with Stripe</button>
+
+<div id="payment-element" style="margin-top: 20px;"></div>
+
+<button id="payBtn">Confirm Payment</button>
+
+<script src="script.js"></script>
+
+</body>
+</html>
