@@ -34,7 +34,7 @@ async function goToPayment() {
   // Step 1: Get/Create customer
   const cRes = await fetch("https://stripe-setup-intent-demo.onrender.com/get-or-create-customer", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId }),
   });
   const { customerId } = await cRes.json();
@@ -42,7 +42,7 @@ async function goToPayment() {
   // Step 2: Create session
   const sRes = await fetch("https://stripe-setup-intent-demo.onrender.com/create-session", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customerId }),
   });
   const { paymentSession } = await sRes.json();
@@ -57,17 +57,14 @@ async function goToPayment() {
   window.location.href = "payment.html";
 }
 
-// 🔹 STRIPE FLOW (ONLY ON BUTTON CLICK)
+// 🔹 STRIPE FLOW
 
 let stripeInitialized = false;
 
-function initStripePayment() {  
-  if (stripeInitialized) return;
-  stripeInitialized = true;
-
+async function initStripePayment() {
   console.log("Stripe button clicked");
 
-  if (stripeInitialized) return; // prevent duplicate mount
+  if (stripeInitialized) return;
   stripeInitialized = true;
 
   const clientSecret = localStorage.getItem("clientSecret");
@@ -77,11 +74,12 @@ function initStripePayment() {
     return;
   }
 
-  // ✅ NEW: fetch publishable key
+  // 🔥 Fetch publishable key from backend
   const res = await fetch("https://stripe-setup-intent-demo.onrender.com/config");
   const { publishableKey } = await res.json();
 
-  console.log("ClientSecret:", clientSecret);
+  // 🔥 Initialize Stripe
+  const stripe = Stripe(publishableKey);
 
   const elements = stripe.elements({
     clientSecret: clientSecret,
@@ -100,7 +98,6 @@ function initStripePayment() {
       redirect: "if_required",
       confirmParams: {
         return_url: window.location.origin + "/result.html",
-        
       },
     });
 
@@ -116,7 +113,7 @@ async function confirmBackend() {
 
   const res = await fetch("https://stripe-setup-intent-demo.onrender.com/confirm-session", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ paymentSessionId: psId }),
   });
 
