@@ -32,7 +32,7 @@ async function goToPayment() {
   const userId = localStorage.getItem("userId");
 
   // Step 1: Get/Create customer
-  const cRes = await fetch("http://localhost:4242/get-or-create-customer", {
+  const cRes = await fetch("https://stripe-setup-intent-demo.onrender.com/get-or-create-customer", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ userId }),
@@ -40,7 +40,7 @@ async function goToPayment() {
   const { customerId } = await cRes.json();
 
   // Step 2: Create session
-  const sRes = await fetch("http://localhost:4242/create-session", {
+  const sRes = await fetch("https://stripe-setup-intent-demo.onrender.com/create-session", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ customerId }),
@@ -78,7 +78,7 @@ function initStripePayment() {
   }
 
   // ✅ NEW: fetch publishable key
-  const res = await fetch("http://localhost:4242/config");
+  const res = await fetch("https://stripe-setup-intent-demo.onrender.com/config");
   const { publishableKey } = await res.json();
 
   console.log("ClientSecret:", clientSecret);
@@ -114,7 +114,7 @@ function initStripePayment() {
 async function confirmBackend() {
   const psId = localStorage.getItem("paymentSessionId");
 
-  const res = await fetch("http://localhost:4242/confirm-session", {
+  const res = await fetch("https://stripe-setup-intent-demo.onrender.com/confirm-session", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ paymentSessionId: psId }),

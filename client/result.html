@@ -21,7 +21,7 @@
     if (!el) return;
 
     if (status === "succeeded" && psId) {
-      const res = await fetch("http://localhost:4242/confirm-session", {
+      const res = await fetch("https://stripe-setup-intent-demo.onrender.com/confirm-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
