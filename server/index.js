@@ -108,9 +108,9 @@ app.post("/create-payment-intent", async (req, res) => {
     amount: 5000, // ₹50 test
     currency: "inr",
     customer: customerId,
-    automatic_payment_methods: {
-      enabled: true,
-    },
+    payment_method_types: ["card"],
+    setup_future_usage: "on_session",
+    capture_method: "manual"
   });
 
   log("PAYMENT", "PaymentIntent created", {
